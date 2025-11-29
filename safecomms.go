@@ -12,7 +12,7 @@ import (
 	"net/http"
 )
 
-const DefaultBaseURL = "https://safecomms.dev/api/v1/public"
+const DefaultBaseURL = "https://api.safecomms.dev"
 
 type Client struct {
 	apiKey     string
