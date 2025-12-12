@@ -9,7 +9,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
+	"os"
+	"path/filepath"
 )
 
 const DefaultBaseURL = "https://api.safecomms.dev"
@@ -56,6 +59,112 @@ func (c *Client) ModerateText(req ModerateTextRequest) (map[string]interface{}, 
 	}
 
 	c.setHeaders(httpReq)
+
+	resp, err := c.httpClient.Do(httpReq)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		return nil, fmt.Errorf("API error: %s", resp.Status)
+	}
+
+	var result map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+type ModerateImageRequest struct {
+	Image               string `json:"image"`
+	Language            string `json:"language,omitempty"`
+	ModerationProfileId string `json:"moderationProfileId,omitempty"`
+}
+
+func (c *Client) ModerateImage(req ModerateImageRequest) (map[string]interface{}, error) {
+	if req.Language == "" {
+		req.Language = "en"
+	}
+	
+	body, err := json.Marshal(req)
+	if err != nil {
+		return nil, err
+	}
+
+	httpReq, err := http.NewRequest("POST", c.baseURL+"/moderation/image", bytes.NewBuffer(body))
+	if err != nil {
+		return nil, err
+	}
+
+	c.setHeaders(httpReq)
+
+	resp, err := c.httpClient.Do(httpReq)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		return nil, fmt.Errorf("API error: %s", resp.Status)
+	}
+
+	var result map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+type ModerateImageFileRequest struct {
+	FilePath            string
+	Language            string
+	ModerationProfileId string
+}
+
+func (c *Client) ModerateImageFile(req ModerateImageFileRequest) (map[string]interface{}, error) {
+	if req.Language == "" {
+		req.Language = "en"
+	}
+
+	file, err := os.Open(req.FilePath)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+
+	part, err := writer.CreateFormFile("image", filepath.Base(req.FilePath))
+	if err != nil {
+		return nil, err
+	}
+	_, err = io.Copy(part, file)
+	if err != nil {
+		return nil, err
+	}
+
+	writer.WriteField("language", req.Language)
+	if req.ModerationProfileId != "" {
+		writer.WriteField("moderationProfileId", req.ModerationProfileId)
+	}
+
+	err = writer.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	httpReq, err := http.NewRequest("POST", c.baseURL+"/moderation/image/upload", body)
+	if err != nil {
+		return nil, err
+	}
+
+	httpReq.Header.Set("Content-Type", writer.FormDataContentType())
+	httpReq.Header.Set("Authorization", "Bearer "+c.apiKey)
 
 	resp, err := c.httpClient.Do(httpReq)
 	if err != nil {
