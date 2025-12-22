@@ -82,6 +82,9 @@ type ModerateImageRequest struct {
 	Image               string `json:"image"`
 	Language            string `json:"language,omitempty"`
 	ModerationProfileId string `json:"moderationProfileId,omitempty"`
+	EnableOcr           bool   `json:"enableOcr,omitempty"`
+	EnhancedOcr         bool   `json:"enhancedOcr,omitempty"`
+	ExtractMetadata     bool   `json:"extractMetadata,omitempty"`
 }
 
 func (c *Client) ModerateImage(req ModerateImageRequest) (map[string]interface{}, error) {
@@ -123,6 +126,9 @@ type ModerateImageFileRequest struct {
 	FilePath            string
 	Language            string
 	ModerationProfileId string
+	EnableOcr           bool
+	EnhancedOcr         bool
+	ExtractMetadata     bool
 }
 
 func (c *Client) ModerateImageFile(req ModerateImageFileRequest) (map[string]interface{}, error) {
@@ -151,6 +157,15 @@ func (c *Client) ModerateImageFile(req ModerateImageFileRequest) (map[string]int
 	writer.WriteField("language", req.Language)
 	if req.ModerationProfileId != "" {
 		writer.WriteField("moderationProfileId", req.ModerationProfileId)
+	}
+	if req.EnableOcr {
+		writer.WriteField("enableOcr", "true")
+	}
+	if req.EnhancedOcr {
+		writer.WriteField("enhancedOcr", "true")
+	}
+	if req.ExtractMetadata {
+		writer.WriteField("extractMetadata", "true")
 	}
 
 	err = writer.Close()
